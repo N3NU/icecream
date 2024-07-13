@@ -25,8 +25,12 @@ def scrape_the_hacker_news(keywords_df):
     # URL of the thehackernews page
     url = "https://thehackernews.com/"
 
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+
     # Fetch the HTML content from the URL
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
 
     article_data = []
 
@@ -132,6 +136,56 @@ def scrape_security_week(keywords_df):
                     article_data.append(article_dict)
 
         return article_data
+    
+def scrape_cybersecurity_news(keywords_df):
+    # URL of the securityweek page
+    url = "https://cybersecuritynews.com/category/vulnerability/"
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+
+    # Fetch the HTML content from the URL
+    response = requests.get(url, headers=headers)
+
+    article_data = []
+
+    if response.status_code == 200:
+        # Store response content
+        html_content = response.content
+
+        # Parse the HTML content using BeautifulSoup
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        # Find the "root" id in the HTML content
+        articles = soup.find('div', class_='td-main-content-wrap td-container-wrap')
+
+        articles_list = articles.find_all("div", class_="td_module_11 td_module_wrap td-animation-stack")
+
+        for i in articles_list:
+
+            article_dict = {}
+
+            for keyword in keywords_df['keywords'].tolist():
+
+                if keyword in i.find("h3", class_="entry-title td-module-title").text.strip() or keyword in i.find("div", class_="td-excerpt").text.strip():
+
+                    article_dict["source"] = "cybersecurity news"
+
+                    article_dict["keyword"] = keyword
+
+                    article_dict["title"] = i.find("h3", class_="entry-title td-module-title").text.strip()
+
+                    article_dict["article_link"] = i.find("h3", class_="entry-title td-module-title").find("a").get("href")
+
+                    article_dict["date"] = i.find("time", class_="entry-date updated td-module-date").text.strip()
+
+                    article_dict["description"] = i.find("div", class_="td-excerpt").text.strip()
+
+                    article_data.append(article_dict)
+
+
+        return article_data
 
         
 def main():
@@ -148,6 +202,8 @@ def main():
 
     the_security_week = scrape_security_week(keywords_df)
 
+    cybersecurity_news = scrape_cybersecurity_news(keywords_df)
+
     if the_hacker_news_output:
         for i in the_hacker_news_output:
             if i["article_link"] not in data_df['article_link'].tolist():
@@ -159,7 +215,13 @@ def main():
             if i["article_link"] not in data_df['article_link'].tolist():
                 new_row = pd.DataFrame([i])
                 append_data_to_csv(new_row, data_csv)
-          
+
+    
+    if cybersecurity_news:
+        for i in cybersecurity_news:
+            if i["article_link"] not in data_df['article_link'].tolist():
+                new_row = pd.DataFrame([i])
+                append_data_to_csv(new_row, data_csv)
 
 
 if __name__ == "__main__":
